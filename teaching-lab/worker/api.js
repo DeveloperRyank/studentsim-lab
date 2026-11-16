@@ -10,6 +10,7 @@ export async function api(req,env,path,serviceOwner){
  if(!env.DB)return json({error:'Persistent database is unavailable. Please check the DB binding.'},503);
  try{
  if(path==='/api/status')return json({configured:!!env.LLM_API_KEY?.trim(),model:env.LLM_MODEL||'gpt-4.1-mini',visionModel:env.LLM_VISION_MODEL||null});
+ if(path==='/api/provider-check' && new URL(req.url).searchParams.get('models')==='1'){const r=await fetch((env.LLM_BASE_URL||'https://api.openai.com/v1').replace(/\/$/,'')+'/models',{headers:{Authorization:'Bearer '+env.LLM_API_KEY.trim()},signal:AbortSignal.timeout(15000)});if(!r.ok)return json({error:'Could not list provider models.',providerStatus:r.status},502);const data=await r.json();return json({models:(data.data||[]).filter(m=>m.active!==false).map(m=>m.id)});}
  if(path==='/api/provider-check'){const result=await llm(env,'Return JSON only: {"ok":true}. This is a connection test.',{test:'connection'});if(result.ok!==true)throw Error('Unexpected connection test output.');return json({ok:true,model:env.LLM_MODEL});}
  if(path==='/api/students' && req.method==='GET'){
  let rows=await env.DB.prepare('SELECT data FROM students WHERE owner=?').bind(owner).all();

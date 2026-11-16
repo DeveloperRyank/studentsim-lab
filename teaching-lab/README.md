@@ -15,3 +15,6 @@ Run npm test and npm run build from this directory. npm run dev starts a local d
 The provider module validates structured output, trims key whitespace, reports authentication/rate-limit/model errors explicitly, and separates text and vision model selection. No deterministic student responses exist. Learning evaluation is separate from dialogue and only evaluated independent understanding earns XP.
 
 The private GET /api/provider-check operation performs a real provider request without creating lesson history. Invalid provider JSON never updates the student state.
+
+## Provider incident resolved
+Groq returned HTTP 404 with model_not_found for llama-3.3-70b-versatile. Its authenticated models endpoint did not list that model. The backend now selects openai/gpt-oss-20b from the live model list. No vision-capable model was returned for this key, so whiteboard image interpretation reports an explicit capability error.
