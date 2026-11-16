@@ -3,3 +3,7 @@ dist
 .env
 server/data/db.json
 *.log
+.vercel
+.env*
+
+teaching-lab/public/
