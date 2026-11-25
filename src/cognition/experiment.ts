@@ -20,7 +20,7 @@ export function defaultExperiment(subject: Subject): ExperimentConfig {
 export function validate(config: ExperimentConfig) {
   const {days, minutes, trials, seed, delayDays} = config;
   if (!Number.isFinite(days) || days <= 0 || days > 3650 || !Number.isSafeInteger(minutes) || minutes < 0 ||
-    minutes > Math.min(days*DAY,6000) || !Number.isSafeInteger(trials) || trials < 1 || trials > 2000 ||
+    minutes > Math.min(days*DAY,7200) || !Number.isSafeInteger(trials) || trials < 1 || trials > 2000 ||
     !Number.isSafeInteger(seed) || !Number.isFinite(delayDays) || delayDays < 0 || delayDays > 3650) throw new RangeError("Invalid experiment settings.");
   for (const key of Object.keys(interventions) as (keyof InterventionSettings)[]) {
     const spec = config.interventions[key];

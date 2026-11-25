@@ -10,7 +10,7 @@ This application is a research-informed computational prototype of student learn
 
 The default view asks for two descriptions of the learner's current knowledge. The code maps these to initial concept mastery and uses the same documented model defaults for attention, memory, and learning across profiles. The guided simulation uses a seven-day initial calculus half-life and a forgetting sensitivity of one. No cognitive settings are required from the user.
 
-Each of five teaching methods gets 60 simulated hours and the same 30-day horizon. For each method, 32 independently seeded clones study the calculus curriculum and sit an unseen, 37-question exam with the same item generation and scoring across methods. The method with the highest mean score is recommended only if its mean reaches 60%. This illustrative benchmark is applied to the simulation and is not a validated cutoff for learners. **Open research tools** exposes the separate configurable lab.
+The five methods initially get 60 simulated hours each within the same 30-day horizon. If none reaches the benchmark, the simulator runs a 120-hour course on new matched seeds within that horizon and reports both stages. These are modeled course budgets. For each method, 32 independently seeded clones study the calculus curriculum and sit an unseen, 37-question exam with the same item generation and scoring across methods. The method with the highest mean score is recommended only if its mean reaches 60%. This illustrative benchmark is applied to the simulation and is not a validated cutoff for learners. **Open research tools** exposes the separate configurable lab.
 
 ### The Forgetful Calculus Student
 

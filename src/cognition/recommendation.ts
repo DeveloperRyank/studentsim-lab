@@ -31,15 +31,27 @@ export function selectTeachingMethod<T extends {summary: {mean: number}}>(rows: 
   return [...rows].sort((a,b)=>b.summary.mean-a.summary.mean).find(row=>row.summary.mean>=target) ?? null;
 }
 
-export function recommendTeaching(overview: LearnerOverview) {
+export const trainingBudgets = [60, 120] as const;
+
+export function recommendTeaching(overview: LearnerOverview, onStage: (hours: number) => void = () => {}) {
   const profile = modelLearner(overview);
-  const config = {...defaultExperiment(calculus),days:30,minutes:3600,delayDays:0,trials:32,seed:7301};
+  const config = {...defaultExperiment(calculus),days:30,delayDays:0,trials:32};
   const policies = baselines(calculus.map(concept=>concept.id));
-  const comparison = compare(calculus,profile,config,policies);
-  // Keep the first-run detail in the research lab. The guided results only need aggregate evidence.
-  const methods = comparison.map(({policy,summary,transfer})=>({name:policy.name,summary,transfer}));
-  return {methods,recommendation:selectTeachingMethod(methods),benchmark,days:config.days,
-    instructionalHours:config.minutes/60,trials:config.trials,examQuestions:config.exam.blueprint.reduce((sum,row)=>sum+row.count,0)};
+  const stages = [];
+  for (const instructionalHours of trainingBudgets) {
+    onStage(instructionalHours);
+    const minutes = instructionalHours * 60;
+    const seed = 7301 + (instructionalHours-trainingBudgets[0])*120;
+    const methods = compare(calculus,profile,{...config,minutes,seed},policies)
+      .map(({policy,summary,transfer})=>({name:policy.name,summary,transfer}))
+      .sort((a,b)=>b.summary.mean-a.summary.mean);
+    const recommendation = selectTeachingMethod(methods);
+    stages.push({instructionalHours,methods,recommendation});
+    if (recommendation) break;
+  }
+  const finalStage = stages[stages.length-1];
+  return {...finalStage,stages,benchmark,days:config.days,
+    trials:config.trials,examQuestions:config.exam.blueprint.reduce((sum,row)=>sum+row.count,0)};
 }
 
 export type TeachingRecommendation = ReturnType<typeof recommendTeaching>;
