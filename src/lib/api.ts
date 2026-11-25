@@ -95,7 +95,7 @@ export async function deleteRecord(kind: Collections, id: string): Promise<void>
   writeLocal(data);
 }
 
-/** Server-side LLM narration. Returns null when unavailable so callers use the template fallback. */
+/** Server-side LLM narration. Returns null when unavailable when dialogue cannot be generated. */
 export async function requestNarration(input: {
   persona: string;
   question: string;
@@ -103,6 +103,7 @@ export async function requestNarration(input: {
   correct: boolean;
   misconceptionLabel?: string | null;
   observableExplanation?: string;
+  allowedUtterances?: string[];
 }): Promise<string | null> {
   if (apiReachable === false) return null;
   try {

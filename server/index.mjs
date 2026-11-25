@@ -15,7 +15,7 @@ app.get("/api/health", (_req, res) => {
 
 // ---- LLM narration (server-side key only) ----
 app.post("/api/llm/narrate", async (req, res) => {
-  const { persona, question, answer, correct, misconceptionLabel, observableExplanation } =
+  const { persona, question, answer, correct, misconceptionLabel, observableExplanation, allowedUtterances } =
     req.body ?? {};
   if (!question || typeof answer !== "string") {
     return res.status(400).json({ ok: false, reason: "bad-request" });
@@ -27,6 +27,8 @@ app.post("/api/llm/narrate", async (req, res) => {
     correct: Boolean(correct),
     misconceptionLabel,
     observableExplanation,
+    allowedUtterances: Array.isArray(allowedUtterances) && allowedUtterances.length > 0 && allowedUtterances.length <= 6 &&
+      allowedUtterances.every(text => typeof text === "string" && text.length <= 500) ? allowedUtterances : undefined,
   });
   res.json(result);
 });
@@ -67,5 +69,5 @@ app.post("/api/scenario-runs", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[StudentSim API] http://localhost:${PORT}  |  LLM: ${llmStatus().configured ? "configured" : "fallback (no key)"}`);
+  console.log(`[StudentSim API] http://localhost:${PORT}  |  LLM: ${llmStatus().configured ? "configured" : "unavailable (no key)"}`);
 });

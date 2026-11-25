@@ -7,10 +7,12 @@ import StudentSimulator from "./components/StudentSimulator";
 import ExperimentArena from "./components/ExperimentArena";
 import BehaviorInspector from "./components/BehaviorInspector";
 import Evaluation from "./components/Evaluation";
+import CognitiveLab from "./components/CognitiveLab";
 
-type Page = "overview" | "simulator" | "experiment" | "inspector" | "evaluation";
+type Page = "cognition" | "overview" | "simulator" | "experiment" | "inspector" | "evaluation";
 
 const NAV: { id: Page; label: string }[] = [
+  { id: "cognition", label: "Cognitive Simulation" },
   { id: "overview", label: "Lab Overview" },
   { id: "simulator", label: "Student Simulator" },
   { id: "experiment", label: "Experiment Arena" },
@@ -19,7 +21,7 @@ const NAV: { id: Page; label: string }[] = [
 ];
 
 export default function App() {
-  const [page, setPage] = useState<Page>("overview");
+  const [page, setPage] = useState<Page>("cognition");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
   const [llm, setLlm] = useState<{ configured: boolean; model: string | null }>({ configured: false, model: null });
@@ -56,7 +58,7 @@ export default function App() {
           </button>
         ))}
         <div className="foot">
-          <div className={`pill ${llm.configured ? "ok" : "off"}`}><span className="dot" />{llm.configured ? "LLM on" : "fallback"}</div>
+          <div className={`pill ${llm.configured ? "ok" : "off"}`}><span className="dot" />{llm.configured ? "LLM on" : "Dialogue unavailable"}</div>
           <div style={{ marginTop: 8 }}>Inspired by microsoft/StudentSim. Simplified rule-based baseline — not the original training method.</div>
         </div>
       </aside>
@@ -66,6 +68,7 @@ export default function App() {
           <h2>{NAV.find((n) => n.id === page)?.label}</h2>
           <p>{subtitle(page)}</p>
         </div>
+        <div hidden={page !== "cognition"}><CognitiveLab llmConfigured={llm.configured} /></div>
         {page === "overview" && (
           <LabOverview sessions={sessions} experiments={experiments} llm={llm} onNavigate={(p) => setPage(p as Page)} />
         )}
@@ -80,6 +83,7 @@ export default function App() {
 
 function subtitle(page: Page): string {
   switch (page) {
+    case "cognition": return "Teach virtual students, compare policies and inspect changes in calculus knowledge over simulated time.";
     case "overview": return "What the simulator does, the available learner profiles, and recent experiments.";
     case "simulator": return "Run an interactive tutoring session and watch the simulated student's answers and estimated knowledge change.";
     case "experiment": return "Compare the baseline and enhanced simulators on the same questions and intervention strategy.";

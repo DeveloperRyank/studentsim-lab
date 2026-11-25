@@ -1,5 +1,53 @@
 # StudentSim Lab
 
+## StudentSim 2.0 cognitive simulation
+
+Run `npm ci` and `npm run dev`, then open `http://localhost:5173`. Run `npm test` for the algebra and calculus suites and `npm run build` to type-check and bundle the app. The older algebra labs remain in the sidebar. The calculus labs run in the browser. The Express API supplies optional narration and the original lab's record storage.
+
+This application is a research-informed computational prototype of student learning. Its predictions depend on model assumptions and have not been validated as predictions of individual human learning outcomes.
+
+### The Forgetful Calculus Student
+
+1. Open **Cognitive Simulation → Cognitive Lab** to inspect the default profile. Algebra and exponents start at 64% and 61% modeled mastery. All calculus targets start at zero. The newly learned calculus half-life parameter is two simulated days.
+2. In **Teaching Arena**, choose Power rule and apply several direct explanations or worked examples. Inspect missed attention and encoding as well as successful events. In **Time Chamber**, advance two days and review the concept. A review can fail or restore accessibility, depending on that student's state and the seed.
+3. In **Multiverse Lab**, select **Run Forgetful Student demo**. The demo uses the saved source defaults of five policies, 24 matched trials per policy, 30 days, 600 minutes, and seed 2026. It also searches 24 policies with eight search trials each and compares the selected policy and baselines on 24 held-out seeds. Replay the first trial of any branch. Replay records show the state changes that occurred in that branch.
+4. Open **Strategy Optimizer** for the held-out comparison and representative schedule. Use **Experiment Results** for distributions, concept-level comparisons, forgetting curves, sensitivity sweeps and JSON/CSV exports. Try sweeping `halfLife` over 0.75, 2 and 7 days. Ranking changes describe sensitivity to assumptions.
+
+### Architecture
+
+| Layer | Implementation |
+|---|---|
+| Cognitive simulation | `src/cognition/engine.ts` holds state, attention, temporary buffer, encoding, acquisition, consolidation, forgetting, retrieval and misconception updates. |
+| Subject definition | `calculus.ts` defines 15 knowledge components with explicit prerequisite edges and executable item templates. A subject supplies concepts and item generators through the same interface. |
+| Teaching interventions | `engine.ts` applies eleven interventions through the same attention and encoding path. Each has an assumed complexity and learning multiplier, with settings for practice and feedback. |
+| Experiment scheduling | `policy.ts` offers five baselines plus random policy generation. It receives curriculum metadata and observed answers or error patterns inferred from the practice items. `experiment.ts` advances simulated time and independently clones state. |
+| Assessment and optimization | `assessment.ts` uses a configurable blueprint with its own question generators and random stream. `experiment.ts` computes Monte Carlo statistics, sensitivity and held-out optimizer evaluation. |
+| Interactive lab | `CognitiveLab.tsx` integrates the seven labs into the existing React app. `worker.ts` keeps numerical experiments off the UI thread. The most recent results of each experiment type and one saved profile use browser storage. JSON exports include configurations, seeds, per-trial scores and one detailed trace per policy. CSV gives one row per score or sensitivity ranking. |
+
+### Equations and assumptions
+
+- **Attention and working memory.** The attention draw uses baseline attention × duration scale × complexity scale × overload scale. The duration scale is `attentionDuration / (attentionDuration + eventMinutes)`. The other scales are `1 − attentionComplexity × interventionComplexity` and `1 − loadPenalty × overload`. Overload is the excess of occupied plus incoming units above capacity, divided by capacity and clamped to [0, 1]. An event demands `1 + interventionComplexity + conceptDifficulty` units. The buffer takes available capacity and expires after `bufferMinutes`. These are hypothetical computational proxies motivated by cognitive-load research.
+- **Readiness and encoding.** For a concept with prerequisites, readiness is `readinessFloor + (1 − readinessFloor) × mean(prerequisite mastery × accessibility)`. Missing prerequisites contribute zero and foundation concepts use 1. An attended event can encode with probability `encoding × readiness × (1 − clamp(conceptDifficulty + loadPenalty × overload))`. The readiness floor avoids an unintended hard gate. These formulas and coefficients are model assumptions.
+- **Acquisition.** Successful encoding applies `M′ = M + (1 − M)L`, with `L = clamp(learning × readiness × interventionLearning × overloadScale)`. This is inspired by the learning transition in BKT. Mastery is a continuous estimate and the simulator does not perform the classical BKT posterior update from correctness. Successful independent retrieval can consolidate memory without changing mastery.
+- **Accessibility and consolidation.** For a concept with positive mastery, accessibility is `2^(−elapsedDays × forgetting / halfLife)` from the latest successful encoding or independent retrieval. Unlearned concepts have zero accessibility. Reading accessibility never writes decay into the state. Successful encoding or independent retrieval can strengthen the half-life by `h′ = min(maxHalfLife, h(1 + αq))` and refresh the timestamp. Instruction quality is its effective learning rate; retrieval quality is the accessibility just before recall. Immediate recall, delayed recall, transfer and instruction have distinct configurable multipliers. Each subject supplies a stability multiplier; the five calculus prerequisites start at 25 times the profile half-life. Exponential accessibility is inspired by Half-Life Regression; the strengthening rule and parameters are illustrative.
+- **Response and transfer.** The simulator samples slip, misconception activation, prerequisite readiness, retrieval and solving in order. Retrieval uses `mastery × accessibility × retrieval ability`. Solving uses `(1 − itemDifficulty) × overloadScale × transfer scale`. Transfer scale is 1 for recall and procedural questions, `transfer × related readiness` for near transfer and `transfer² × related readiness` for far transfer. Guessing applies if the prerequisite, retrieval, or solving check fails without a slip or misconception. It models a correct guess probability; other guesses are recorded as unsure. Authored error rules produce consistent mathematical answers and can override available correct knowledge.
+- **Misconceptions.** Failed attended learning can activate a rule with probability `susceptibility × (1 − mastery)` and add `(1 − strength) × formationGain`. Feedback targeting an eligible rule succeeds with probability `correctionChance × (1 − resistance) × readiness` and reduces strength by the factor `1 − correctionGain`. Correct answers alone do not delete the rule. Strength is a proxy for activation probability, with shared student-level resistance.
+- **Scheduling and evaluation.** Policies use ten-minute intervention blocks with a shortened final block when necessary. They spend identical budgets in the baseline comparison, with policy-specific spacing inside a common horizon. The immediate exam starts after a policy's last intervention; the delayed exam occurs at the configured horizon plus any extra delay. Both use fresh copies of the same pre-exam state, the same item seed and independent item and response random streams. Practice and exam generators use disjoint parameter ranges. The assessment is standardized within the experiment; it has not been calibrated on students. Scoring uses exact canonical outputs of the executable templates. The app has no open-ended symbolic answer parser.
+- **Statistics and search.** Retention is mean mastery × accessibility across concepts. Misconception persistence is mean strength across authored rules, including inactive rules. Efficiency is mastery gain per teaching minute. Reported 95% intervals are normal approximations for the delayed score mean over 20 or more trials. They do not quantify measurement or parameter uncertainty. Uniform random search varies concept order, spacing and activity mix. The least-time objective samples budgets and prefers the smallest sampled budget meeting the target in search; the UI reports whether that target also held on the evaluation seeds. Search results only compare the sampled policies within this model.
+
+### Scope and research foundations
+
+Teaching is structured around authored problems and intervention settings. Tutor notes are recorded as text; they do not change the numerical model. Optional narration uses the existing API and accepts only a permitted rendering of the sampled answer or activated rule. This constrained narration is brief and may be unavailable. Numerical experiments never call the LLM. The knowledge graph is shown as a prerequisite list with linked detail, and branches replay their first trial. Browser storage keeps the last result in each category; use exports for archival or sharing.
+
+- Corbett and Anderson (1994), *Knowledge Tracing: Modeling the Acquisition of Procedural Knowledge*, motivates the acquisition transition.
+- Settles and Meeder (2016), *A Trainable Spaced Repetition Model for Language Learning*, motivates exponential accessibility. This project does not fit half-lives to observations.
+- Koedinger et al. (2023), *An Astonishing Regularity in Student Learning Rate*, motivates making learning rates explicit and testing sensitivity.
+- Cepeda et al. (2006), *Distributed Practice in Verbal Recall Tasks*, and Roediger and Karpicke (2006), *Test-Enhanced Learning*, motivate the spacing and retrieval interventions. They do not establish the implemented effect sizes.
+- Sweller (1988), *Cognitive Load During Problem Solving*, motivates load as a factor. Conceptual-change research motivates retaining incorrect rules after a correct response.
+
+
+## Original algebra lab
+
 An interactive **AI student-simulation research lab** for secondary-school mathematics.
 It simulates how different learners answer questions, make characteristic mistakes, and
 respond to tutoring interventions — with an explicit, inspectable knowledge-state model.
@@ -28,7 +76,7 @@ cp .env.example .env
 ```
 
 The key is read **only** by the Express server (`server/llm.mjs`) and is never bundled into the
-frontend. With no key, `/api/llm/narrate` returns `{ok:false}` and the UI uses template narration.
+frontend. With no key, `/api/llm/narrate` returns `{ok:false}`. The UI displays that dialogue is unavailable and continues to show numerical responses.
 
 Other scripts:
 
@@ -130,7 +178,7 @@ All state changes are labelled **simulated estimates**, never measured learning.
 as a first-class property, and side-by-side baseline-vs-enhanced benchmarking.
 
 **Our original simplifications:** structured skill estimates + misconception tracking as an explicit
-state machine; a deterministic fallback so the app runs without any model; and anomaly detection aimed at
+state machine; a separate numerical engine that runs without an LLM; and anomaly detection aimed at
 profile-contradicting behaviour.
 
 ---

@@ -118,6 +118,6 @@ export interface Session {
   simulator: SimulatorKind;
   createdAt: number;
   attempts: AttemptRecord[];
-  /** True when the natural-language narration used an LLM (not fallback). */
+  /** True when the natural-language narration used an LLM. */
   usedLlm: boolean;
 }

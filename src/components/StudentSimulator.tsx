@@ -158,6 +158,7 @@ export default function StudentSimulator({ onLogged }: { onLogged: () => void })
               )}
               {busy && !spoken && <div className="skeleton" style={{ marginTop: 8 }}>writing response…</div>}
               {spoken && <div className="spoken">“{spoken}”</div>}
+              {!busy && !spoken && <div className="note">Natural-language interaction unavailable.</div>}
               <div className="row" style={{ marginTop: 10 }}>
                 <span className="pill off">skill est: {fmtSkill(lastAttempt)}</span>
                 {lastAttempt.priorIntervention && (

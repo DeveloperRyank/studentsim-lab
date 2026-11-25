@@ -27,7 +27,7 @@ export default function LabOverview({
           changes are <b>simulated estimates</b>, never measured learning, and never a claim about a real student.
         </p>
         <div className="row" style={{ marginTop: 12 }}>
-          <span className={`pill ${llm.configured ? "ok" : "off"}`}><span className="dot" />{llm.configured ? `LLM narration: ${llm.model}` : "LLM: deterministic fallback (no key)"}</span>
+          <span className={`pill ${llm.configured ? "ok" : "off"}`}><span className="dot" />{llm.configured ? `LLM narration: ${llm.model}` : "Natural-language interaction unavailable"}</span>
           <span className="pill">{sessions.length} sessions</span>
           <span className="pill">{experiments.length} experiments</span>
           <span className="spacer" />

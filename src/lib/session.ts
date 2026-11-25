@@ -109,8 +109,8 @@ export function runAttempt(
 }
 
 /** Turn the rule-decided outcome into natural first-person language.
- *  Uses the server LLM when configured, otherwise a deterministic template. */
-export async function narrateAttempt(run: Run, attempt: AttemptRecord, question: Question): Promise<string> {
+ *  Uses the server LLM when available. */
+export async function narrateAttempt(run: Run, attempt: AttemptRecord, question: Question): Promise<string | null> {
   const misconceptionLabel = attempt.misconceptionId
     ? MISCONCEPTIONS[attempt.misconceptionId].label
     : null;
@@ -127,29 +127,7 @@ export async function narrateAttempt(run: Run, attempt: AttemptRecord, question:
     run.usedLlm = true;
     return llmText;
   }
-  return templateNarration(attempt, misconceptionLabel);
-}
-
-function templateNarration(
-  attempt: AttemptRecord,
-  misconceptionLabel: string | null,
-): string {
-  const q = attempt.studentAnswer;
-  if (attempt.correct) {
-    const lines = [
-      `I got ${q}. I did the steps the usual way and I'm fairly confident about this one.`,
-      `That came out to ${q} — this type I can handle.`,
-    ];
-    return lines[attempt.sequence % lines.length];
-  }
-  if (misconceptionLabel) {
-    const lines = [
-      `I wrote ${q}. I think I handled the signs OK... ${misconceptionLabel} is the bit I always rush.`,
-      `My answer is ${q}. I wasn't sure about ${misconceptionLabel.toLowerCase()}, so I just went with it.`,
-    ];
-    return lines[attempt.sequence % lines.length];
-  }
-  return `I'm not sure on this one, so I guessed. It came out as ${attempt.studentAnswer}.`;
+  return null;
 }
 
 export function currentSkill(run: Run): number {

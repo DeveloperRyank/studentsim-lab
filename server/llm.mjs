@@ -2,8 +2,7 @@ import "dotenv/config";
 
 // Provider-agnostic OpenAI-compatible chat adapter.
 // The API key lives ONLY here (server side, from process.env). It is never
-// shipped to the frontend. If no key is configured the caller falls back to
-// deterministic templates and the app still fully works.
+// shipped to the frontend. Numerical simulation is independent of narration.
 
 const apiKey = process.env.LLM_API_KEY?.trim();
 const baseUrl = (process.env.LLM_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
@@ -25,7 +24,8 @@ export function llmStatus() {
 export async function narrateStudent(input) {
   if (!apiKey) return { ok: false, reason: "not-configured" };
 
-  const system = [
+  const allowed = input.allowedUtterances;
+  const system = allowed ? "Choose the most natural permitted utterance. Return it exactly, without quotes, formatting or extra text." : [
     "You role-play a simulated secondary-school maths learner for a research prototype.",
     "You are given the DECIDED outcome (correct or a specific misconception) and the",
     "learner's answer. Voice it as 1-2 short first-person sentences in the learner's",
@@ -40,11 +40,13 @@ export async function narrateStudent(input) {
     outcome: input.correct ? "correct" : "incorrect",
     misconception: input.misconceptionLabel ?? null,
     observableReason: input.observableExplanation,
+    permittedUtterances: allowed,
   });
 
   try {
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
+      signal: AbortSignal.timeout(15000),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
@@ -65,6 +67,7 @@ export async function narrateStudent(input) {
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content?.trim();
     if (!text) return { ok: false, reason: "empty-response" };
+    if (allowed && !allowed.includes(text)) return { ok: false, reason: "inconsistent-response" };
     return { ok: true, text };
   } catch (err) {
     return { ok: false, reason: "network-error", detail: String(err) };
