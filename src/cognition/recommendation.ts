@@ -5,9 +5,23 @@ import { baselines } from "./policy";
 
 export const readinessLevels = ["Needs review", "Comfortable", "Strong"] as const;
 export const experienceLevels = ["New to calculus", "Some exposure", "Can differentiate simple functions"] as const;
+export const topicLevels = [
+  {label:"New to this",mastery:0},
+  {label:"Recognizes it",mastery:.2},
+  {label:"Can do it with help",mastery:.45},
+  {label:"Can do it independently",mastery:.75},
+  {label:"Can explain and apply it in a new problem",mastery:.95},
+] as const;
+export type TopicLevel = typeof topicLevels[number]["label"];
+
+export const observedErrors = calculus.flatMap(concept =>
+  concept.misconceptions.map(error => ({...error,concept:concept.name})));
+
 export interface LearnerOverview {
   foundations: typeof readinessLevels[number];
   calculus: typeof experienceLevels[number];
+  topics?: Record<string,TopicLevel>;
+  observedErrors?: string[];
 }
 
 export const benchmark = 0.60;
@@ -24,7 +38,17 @@ export function modelLearner(overview: LearnerOverview): Profile {
       : experience === 1 ? (introduction.includes(concept.id) ? .25 : .08)
       : introduction.includes(concept.id) || concept.id === "polynomial" || concept.id === "sum" ? .65 : .25;
   }
-  return {id:"Calculus learner",prior,misconceptions:{},params:{...defaults,halfLife:7,forgetting:1}};
+  for (const [id,level] of Object.entries(overview.topics ?? {})) {
+    const rating = topicLevels.find(item=>item.label===level);
+    if (!rating || !calculus.some(concept=>concept.id===id)) throw new RangeError("Unknown topic or knowledge level.");
+    prior[id] = rating.mastery;
+  }
+  const misconceptions: Profile["misconceptions"] = {};
+  for (const id of overview.observedErrors ?? []) {
+    if (!observedErrors.some(error=>error.id===id)) throw new RangeError("Unknown observed error.");
+    misconceptions[id] = .55;
+  }
+  return {id:"Calculus learner",prior,misconceptions,params:{...defaults,halfLife:7,forgetting:1}};
 }
 
 export function selectTeachingMethod<T extends {summary: {mean: number}}>(rows: T[], target = benchmark) {
@@ -51,6 +75,8 @@ export function recommendTeaching(overview: LearnerOverview, onStage: (hours: nu
   }
   const finalStage = stages[stages.length-1];
   return {...finalStage,stages,benchmark,days:config.days,
+    detailedTopics:Object.keys(overview.topics ?? {}).length,
+    detailedErrors:Object.keys(profile.misconceptions).length,
     trials:config.trials,examQuestions:config.exam.blueprint.reduce((sum,row)=>sum+row.count,0)};
 }
 

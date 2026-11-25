@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { benchmark, experienceLevels, readinessLevels, trainingBudgets, type LearnerOverview, type TeachingRecommendation } from "../cognition/recommendation";
+import { benchmark, experienceLevels, observedErrors, readinessLevels, topicLevels, trainingBudgets, type LearnerOverview, type TeachingRecommendation, type TopicLevel } from "../cognition/recommendation";
+import { calculus } from "../cognition/calculus";
 import type { RecommendationMessage } from "../cognition/recommendation-worker";
 
 const suggestions: Record<string,string> = {
@@ -9,11 +10,30 @@ const suggestions: Record<string,string> = {
   "Adaptive teaching":"Start with an example and check understanding. If an answer shows a gap, revisit the relevant prerequisite or guide a similar problem before retesting.",
   "Misconception-driven":"Use short diagnostic questions to identify repeated errors. Explain the specific mistaken rule, then test it with a different problem.",
 };
+const topicEvidence: Record<string,string> = {
+  algebra:"Solve a linear equation and rearrange a formula.",
+  exponents:"Combine powers of the same base using exponent rules.",
+  functions:"Evaluate a function from its formula or notation.",
+  graphs:"Read coordinates and interpret the shape of a graph.",
+  slope:"Find a straight line’s slope from two points.",
+  limits:"Find the value a function approaches near a point.",
+  average:"Calculate average change over an interval.",
+  instantaneous:"Distinguish a rate at a point from a rate over an interval.",
+  definition:"Use a difference quotient to find a derivative.",
+  constant:"Differentiate a constant function.",
+  power:"Differentiate a power of x.",
+  sum:"Differentiate a sum term by term.",
+  polynomial:"Differentiate a polynomial with several terms.",
+  tangent:"Find the slope of a tangent at a chosen point.",
+  applications:"Use derivatives to solve a rate-of-change problem in context.",
+};
 const score = (value:number) => `${(value*100).toFixed(1)}%`;
 
 export default function TeachingRecommendation({openResearch}: {openResearch: ()=>void}) {
   const [foundations,setFoundations] = useState<LearnerOverview["foundations"]|"">("");
   const [experience,setExperience] = useState<LearnerOverview["calculus"]|"">("");
+  const [topics,setTopics] = useState<Record<string,TopicLevel>>({});
+  const [errors,setErrors] = useState<string[]>([]);
   const [result,setResult] = useState<TeachingRecommendation|null>(null);
   const [error,setError] = useState("");
   const [trainingHours,setTrainingHours] = useState<number>(trainingBudgets[0]);
@@ -43,7 +63,7 @@ export default function TeachingRecommendation({openResearch}: {openResearch: ()
         else setResult(data.result);
       };
       worker.onerror = ()=>{finish();setError("The simulation stopped. Run it again to retry.");};
-      worker.postMessage({foundations,calculus:experience} satisfies LearnerOverview);
+      worker.postMessage({foundations,calculus:experience,topics,observedErrors:errors} satisfies LearnerOverview);
     } catch {
       finish();
       setError("The simulation could not start. Run it again to retry.");
@@ -66,6 +86,42 @@ export default function TeachingRecommendation({openResearch}: {openResearch: ()
           </select>
         </label>
       </div>
+      <details>
+        <summary>Detailed learner background</summary>
+        <p className="sub">Rate any topics you have evidence for. Unrated topics use the two general answers above.</p>
+        {([["Math foundations",calculus.slice(0,5)],["Calculus skills",calculus.slice(5)]] as const).map(([title,concepts])=>
+          <fieldset className="cog-background-section" key={title}><legend>{title}</legend>
+            <div className="cog-grid">{concepts.map(concept=>
+              <label className="cog-field" key={concept.id}>
+                <strong>{concept.name}</strong>
+                <small>{topicEvidence[concept.id]}</small>
+                <select aria-label={concept.name} disabled={busy} value={topics[concept.id] ?? ""} onChange={event=>{
+                  const value = event.target.value as TopicLevel | "";
+                  setTopics(previous=>{
+                    const next = {...previous};
+                    if (value) next[concept.id] = value;
+                    else delete next[concept.id];
+                    return next;
+                  });
+                  setResult(null);setError("");
+                }}>
+                  <option value="">Use general background</option>
+                  {topicLevels.map(({label})=><option key={label}>{label}</option>)}
+                </select>
+              </label>)}</div>
+          </fieldset>)}
+        <fieldset className="cog-background-section"><legend>Repeated errors you’ve observed</legend>
+          <p className="sub">Select errors the learner has actually made. Leave the list blank if you haven’t seen their work.</p>
+          <div className="cog-grid">{observedErrors.map(observed=>
+            <label className="cog-observation" key={observed.id}>
+              <input type="checkbox" disabled={busy} checked={errors.includes(observed.id)} onChange={event=>{
+                setErrors(event.target.checked ? [...errors,observed.id] : errors.filter(id=>id!==observed.id));
+                setResult(null);setError("");
+              }}/>
+              <span><strong>{observed.concept}</strong><small>{observed.rule}</small></span>
+            </label>)}</div>
+        </fieldset>
+      </details>
       <div className="cog-actions"><button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Training and testing…" : "Find a teaching method"}</button></div>
       <p className="sub">Methods start with {trainingBudgets[0]} simulated hours. If none average {Math.round(benchmark*100)}% on the calculus exam, StudentSim compares them again with a longer course.</p>
     </form>
@@ -83,6 +139,8 @@ export default function TeachingRecommendation({openResearch}: {openResearch: ()
           : "Start with rates of change and the basic differentiation rules. Use a short quiz to see which topics need more practice before moving to applications."}</p>
       </>}
       {result.stages.length > 1 && <p>After {result.stages[0].instructionalHours} hours, the top average was {score(result.stages[0].methods[0].summary.mean)}. With {result.instructionalHours} hours, the top average was {score(result.methods[0].summary.mean)}.</p>}
+      {(result.detailedTopics>0 || result.detailedErrors>0) &&
+        <p className="sub">Starting profile used {result.detailedTopics} topic {result.detailedTopics===1 ? "rating" : "ratings"} and {result.detailedErrors} observed error {result.detailedErrors===1 ? "pattern" : "patterns"}.</p>}
       <p className="sub">{result.trials} trials per method · {result.instructionalHours} simulated teaching hours over {result.days} days · {result.examQuestions}-question exam</p>
       <div className="cog-scroll"><table className="cog-table"><thead><tr><th scope="col">Method</th><th scope="col">Average exam score</th><th scope="col">Benchmark</th></tr></thead>
         <tbody>{result.methods.map(method=><tr key={method.name}>

@@ -36,3 +36,20 @@ it("runs the unseen exam and stops when the first course qualifies", () => {
   expect(experienced.methods).toHaveLength(5);
   expect(experienced.methods.every(method=>method.summary.scores.length===experienced.trials)).toBe(true);
 });
+
+it("uses individual topic ratings and observed errors to build the simulation state", () => {
+  const overview = {foundations:"Strong",calculus:"New to calculus"} as const;
+  const general = modelLearner(overview);
+  const detailed = {...overview,topics:{exponents:"Can do it with help",power:"Can do it independently"} as const,
+    observedErrors:["no_multiplier"]};
+  const learner = modelLearner(detailed);
+  expect(learner.prior.exponents).toBeLessThan(general.prior.exponents);
+  expect(learner.prior.power).toBeGreaterThan(general.prior.power);
+  expect(learner.prior.algebra).toBe(general.prior.algebra);
+  expect(learner.misconceptions.no_multiplier).toBeGreaterThan(0);
+  expect(learner.params).toEqual(general.params);
+  const comparison = recommendTeaching(detailed);
+  expect(comparison.detailedTopics).toBe(2);
+  expect(comparison.detailedErrors).toBe(1);
+  expect(comparison.methods[0].summary.scores).not.toEqual(recommendTeaching(overview).methods[0].summary.scores);
+});
