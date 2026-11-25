@@ -6,6 +6,12 @@ Run `npm ci` and `npm run dev`, then open `http://localhost:5173`. Run `npm test
 
 This application is a research-informed computational prototype of student learning. Its predictions depend on model assumptions and have not been validated as predictions of individual human learning outcomes.
 
+### Teaching recommendation
+
+The default view asks for two descriptions of the learner's current knowledge. The code maps these to initial concept mastery and uses the same documented model defaults for attention, memory, and learning across profiles. The guided simulation uses a seven-day initial calculus half-life and a forgetting sensitivity of one. No cognitive settings are required from the user.
+
+Each of five teaching methods gets 60 simulated hours and the same 30-day horizon. For each method, 32 independently seeded clones study the calculus curriculum and sit an unseen, 37-question exam with the same item generation and scoring across methods. The method with the highest mean score is recommended only if its mean reaches 60%. This illustrative benchmark is applied to the simulation and is not a validated cutoff for learners. **Open research tools** exposes the separate configurable lab.
+
 ### The Forgetful Calculus Student
 
 1. Open **Cognitive Simulation → Cognitive Lab** to inspect the default profile. Algebra and exponents start at 64% and 61% modeled mastery. All calculus targets start at zero. The newly learned calculus half-life parameter is two simulated days.

@@ -8,6 +8,7 @@ import ExperimentArena from "./components/ExperimentArena";
 import BehaviorInspector from "./components/BehaviorInspector";
 import Evaluation from "./components/Evaluation";
 import CognitiveLab from "./components/CognitiveLab";
+import TeachingRecommendation from "./components/TeachingRecommendation";
 
 type Page = "cognition" | "overview" | "simulator" | "experiment" | "inspector" | "evaluation";
 
@@ -21,6 +22,8 @@ const NAV: { id: Page; label: string }[] = [
 ];
 
 export default function App() {
+  const [research, setResearch] = useState(false);
+  const [openedResearch, setOpenedResearch] = useState(false);
   const [page, setPage] = useState<Page>("cognition");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
@@ -68,7 +71,11 @@ export default function App() {
           <h2>{NAV.find((n) => n.id === page)?.label}</h2>
           <p>{subtitle(page)}</p>
         </div>
-        <div hidden={page !== "cognition"}><CognitiveLab llmConfigured={llm.configured} /></div>
+        <div hidden={page !== "cognition" || research}><TeachingRecommendation openResearch={() => {setOpenedResearch(true);setResearch(true);}} /></div>
+        {openedResearch && <div hidden={page !== "cognition" || !research}><div className="cog-stack">
+          <div><button className="btn btn-ghost" onClick={() => setResearch(false)}>Back to teaching recommendation</button></div>
+          <CognitiveLab llmConfigured={llm.configured} />
+        </div></div>}
         {page === "overview" && (
           <LabOverview sessions={sessions} experiments={experiments} llm={llm} onNavigate={(p) => setPage(p as Page)} />
         )}
@@ -83,7 +90,7 @@ export default function App() {
 
 function subtitle(page: Page): string {
   switch (page) {
-    case "cognition": return "Teach virtual students, compare policies and inspect changes in calculus knowledge over simulated time.";
+    case "cognition": return "Describe what the learner knows. StudentSim compares teaching methods and recommends one if it passes the calculus benchmark.";
     case "overview": return "What the simulator does, the available learner profiles, and recent experiments.";
     case "simulator": return "Run an interactive tutoring session and watch the simulated student's answers and estimated knowledge change.";
     case "experiment": return "Compare the baseline and enhanced simulators on the same questions and intervention strategy.";
